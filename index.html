@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>还款计算器</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap");
+
+      :root {
+        color-scheme: light;
+        --paper: oklch(97% 0.02 92);
+        --paper-strong: oklch(93% 0.03 92);
+        --ink: oklch(27% 0.04 185);
+        --ink-soft: oklch(43% 0.04 185);
+        --accent: oklch(58% 0.13 160);
+        --accent-deep: oklch(37% 0.08 168);
+        --warn: oklch(63% 0.16 35);
+        --line: color-mix(in oklab, var(--accent-deep) 14%, white);
+        --shadow: 0 28px 70px color-mix(in oklab, var(--accent-deep) 14%, transparent);
+        --radius: 28px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 16%, transparent), transparent 26rem),
+          linear-gradient(180deg, color-mix(in oklab, var(--paper) 88%, white) 0%, var(--paper) 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.22;
+        background:
+          linear-gradient(to bottom, transparent, transparent 41px, color-mix(in oklab, var(--accent-deep) 8%, transparent) 41px, color-mix(in oklab, var(--accent-deep) 8%, transparent) 42px),
+          linear-gradient(90deg, color-mix(in oklab, var(--accent-deep) 4%, transparent), transparent 20%);
+        background-size: 100% 42px, 100% 100%;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: clamp(28px, 4vw, 56px) 0 40px;
+      }
+
+      .hero {
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 13ch;
+        font-family: "Noto Serif SC", "Songti SC", serif;
+        font-size: clamp(2.4rem, 5vw, 4.8rem);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      .layout {
+        display: grid;
+        gap: 22px;
+        grid-template-columns: minmax(0, 1.06fr) minmax(320px, 0.94fr);
+        align-items: start;
+      }
+
+      .panel {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in oklab, white 74%, var(--paper) 26%);
+        box-shadow: var(--shadow);
+      }
+
+      .panel::after {
+        content: "";
+        position: absolute;
+        inset: auto -4rem -4rem auto;
+        width: 12rem;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        background: radial-gradient(circle, color-mix(in oklab, var(--accent) 14%, transparent), transparent 64%);
+      }
+
+      .panel-inner {
+        position: relative;
+        z-index: 1;
+        padding: clamp(22px, 3vw, 34px);
+      }
+
+      .section-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 1.15rem;
+      }
+
+      .section-head p {
+        margin: 0;
+        color: var(--ink-soft);
+        font-size: 0.92rem;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+      }
+
+      .field-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 0.94rem;
+        color: var(--ink-soft);
+      }
+
+      .label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .hint {
+        font-size: 0.82rem;
+        color: color-mix(in oklab, var(--ink-soft) 82%, white);
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid color-mix(in oklab, var(--accent-deep) 14%, white);
+        border-radius: 16px;
+        padding: 15px 16px;
+        font: inherit;
+        color: var(--ink);
+        background: color-mix(in oklab, white 78%, var(--paper) 22%);
+        transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+      }
+
+      input:hover {
+        border-color: color-mix(in oklab, var(--accent-deep) 28%, white);
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: white;
+        transform: translateY(-1px);
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-top: 2px;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 14px 22px;
+        font: inherit;
+        font-weight: 700;
+        color: oklch(98% 0.01 85);
+        background: linear-gradient(135deg, var(--accent-deep), color-mix(in oklab, var(--accent) 82%, var(--accent-deep)));
+        cursor: pointer;
+        transition: transform 180ms ease, box-shadow 180ms ease;
+        box-shadow: 0 18px 30px color-mix(in oklab, var(--accent) 24%, transparent);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+      }
+
+      button.secondary {
+        color: var(--accent-deep);
+        background: transparent;
+        box-shadow: none;
+        border: 1px solid color-mix(in oklab, var(--accent-deep) 18%, white);
+      }
+
+      button.label-action {
+        display: inline-flex;
+        width: auto;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: var(--accent-deep);
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: none;
+      }
+
+      button.label-action:hover {
+        transform: none;
+        text-decoration: underline;
+      }
+
+      .summary {
+        display: grid;
+        gap: 14px;
+      }
+
+      .summary-card {
+        padding: 18px 18px 20px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, color-mix(in oklab, white 76%, var(--paper-strong) 24%), white);
+        border: 1px solid color-mix(in oklab, var(--accent-deep) 12%, white);
+      }
+
+      .summary-card strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        color: var(--ink-soft);
+      }
+
+      .summary-card .value {
+        font-family: "Noto Serif SC", "Songti SC", serif;
+        font-size: clamp(1.9rem, 3vw, 2.7rem);
+        line-height: 1.05;
+      }
+
+      .summary-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .mini {
+        padding: 16px;
+        border-radius: 18px;
+        background: color-mix(in oklab, white 72%, var(--paper) 28%);
+        border: 1px solid color-mix(in oklab, var(--accent-deep) 10%, white);
+      }
+
+      .mini strong,
+      .logic h3 {
+        margin: 0 0 8px;
+        font-size: 0.88rem;
+        color: var(--ink-soft);
+      }
+
+      .mini .metric {
+        font-size: 1.35rem;
+        font-weight: 700;
+      }
+
+      .logic {
+        display: grid;
+        gap: 16px;
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px dashed color-mix(in oklab, var(--accent-deep) 18%, white);
+      }
+
+      .formula {
+        padding: 18px 20px;
+        border-radius: 20px;
+        background: oklch(24% 0.03 190);
+        color: oklch(95% 0.02 90);
+        font-size: clamp(1.02rem, 2vw, 1.18rem);
+        line-height: 1.8;
+      }
+
+      .formula code {
+        font-family: "Noto Serif SC", "Songti SC", serif;
+        font-size: 1.06em;
+      }
+
+      .logic p,
+      .logic li,
+      .footnote {
+        margin: 0;
+        color: var(--ink-soft);
+        line-height: 1.8;
+      }
+
+      .logic ol {
+        margin: 0;
+        padding-left: 1.3em;
+        display: grid;
+        gap: 8px;
+      }
+
+      .footnote {
+        margin-top: 16px;
+        font-size: 0.9rem;
+      }
+
+      .error {
+        min-height: 1.4em;
+        font-size: 0.92rem;
+        color: var(--warn);
+      }
+
+      .calc-line {
+        display: grid;
+        gap: 6px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: color-mix(in oklab, white 70%, var(--paper) 30%);
+        border: 1px solid color-mix(in oklab, var(--accent-deep) 9%, white);
+      }
+
+      .calc-line strong {
+        font-size: 0.88rem;
+        color: var(--ink-soft);
+      }
+
+      .calc-line span {
+        font-size: 1rem;
+      }
+
+      @media (max-width: 860px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          max-width: none;
+        }
+      }
+
+      @media (max-width: 620px) {
+        main {
+          width: min(100% - 20px, 1120px);
+        }
+
+        .field-grid,
+        .summary-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .panel-inner {
+          padding: 20px;
+        }
+
+        .button-row > button {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-label="页面说明">
+        <h1>还款计算</h1>
+      </section>
+
+      <div class="layout">
+        <section class="panel" aria-labelledby="calculator-title">
+          <div class="panel-inner">
+            <div class="section-head">
+              <h2 id="calculator-title">输入参数</h2>
+            </div>
+
+            <form id="calculator-form" novalidate>
+              <div class="field-grid">
+                <label for="loanPrincipal">
+                  <span class="label-row">
+                    <span>借款总额</span>
+                    <span class="hint">单位：元</span>
+                  </span>
+                  <input id="loanPrincipal" name="loanPrincipal" type="number" min="0" step="0.01" value="" inputmode="decimal" placeholder="请输入借款总额" />
+                </label>
+
+                <label for="annualRatePercent">
+                  <span class="label-row">
+                    <span>年利率</span>
+                    <span class="hint">默认 10%</span>
+                  </span>
+                  <input id="annualRatePercent" name="annualRatePercent" type="number" step="0.01" value="10" inputmode="decimal" />
+                </label>
+
+                <label for="paymentAmount">
+                  <span class="label-row">
+                    <span>本次还款金额</span>
+                    <span class="hint">单位：元</span>
+                  </span>
+                  <input id="paymentAmount" name="paymentAmount" type="number" min="0" step="0.01" value="" inputmode="decimal" placeholder="请输入本次还款金额" />
+                </label>
+
+                <label for="calculationDate">
+                  <span class="label-row">
+                    <span>还款日期</span>
+                    <button class="label-action" type="button" id="resetToday">重置为今天</button>
+                  </span>
+                  <input id="calculationDate" name="calculationDate" type="date" />
+                </label>
+              </div>
+
+              <div class="button-row">
+                <button type="submit">更新结果</button>
+              </div>
+
+              <p class="error" id="errorMessage" aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="result-title">
+          <div class="panel-inner">
+            <div class="section-head">
+              <h2 id="result-title">计算结果</h2>
+            </div>
+
+            <div class="summary">
+              <article class="summary-card" aria-live="polite">
+                <strong>还款后剩余本金</strong>
+                <div class="value" id="remainingPrincipal">0.00 元</div>
+              </article>
+
+              <div class="summary-grid">
+                <article class="mini">
+                  <strong>本次归还本金</strong>
+                  <div class="metric" id="principalRepaid">0.00 元</div>
+                </article>
+                <article class="mini">
+                  <strong>本次支付利息</strong>
+                  <div class="metric" id="interestPaid">0.00 元</div>
+                </article>
+                <article class="mini">
+                  <strong>距 2026-01-01 的天数</strong>
+                  <div class="metric" id="daysElapsed">0 天</div>
+                </article>
+              </div>
+            </div>
+
+            <div class="logic">
+              <h3>本息计算逻辑</h3>
+              <div class="formula">
+                <code>(1 + daysElapsed / 365 × annualRate) × principalRepaid = paymentAmount</code>
+              </div>
+              <ol>
+                <li><span id="logicStepDays">先算计算日期距离 2026 年 1 月 1 日的天数。</span></li>
+                <li><span id="logicStepPrincipal">再用还款金额除以折算系数，得到这次实际归还的本金。</span></li>
+                <li><span id="logicStepInterest">利息 = 本次还款金额 - 本次归还本金。</span></li>
+                <li><span id="logicStepRemaining">剩余本金 = 借款总额 - 本次归还本金。</span></li>
+              </ol>
+
+              <div class="calc-line">
+                <strong>代入本次数据</strong>
+                <span id="substitutedFormula">等待输入后计算。</span>
+              </div>
+
+              <p class="footnote">
+                年利率输入框填写百分数，例如输入 10 代表 10%，程序会自动换算成 0.10 参与计算。
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const REFERENCE_DATE = "2026-01-01";
+      const form = document.getElementById("calculator-form");
+      const loanPrincipalInput = document.getElementById("loanPrincipal");
+      const annualRateInput = document.getElementById("annualRatePercent");
+      const paymentAmountInput = document.getElementById("paymentAmount");
+      const calculationDateInput = document.getElementById("calculationDate");
+      const resetTodayButton = document.getElementById("resetToday");
+      const errorMessage = document.getElementById("errorMessage");
+
+      const remainingPrincipalOutput = document.getElementById("remainingPrincipal");
+      const principalRepaidOutput = document.getElementById("principalRepaid");
+      const interestPaidOutput = document.getElementById("interestPaid");
+      const daysElapsedOutput = document.getElementById("daysElapsed");
+      const logicStepDaysOutput = document.getElementById("logicStepDays");
+      const logicStepPrincipalOutput = document.getElementById("logicStepPrincipal");
+      const logicStepInterestOutput = document.getElementById("logicStepInterest");
+      const logicStepRemainingOutput = document.getElementById("logicStepRemaining");
+      const substitutedFormulaOutput = document.getElementById("substitutedFormula");
+
+      const currencyFormatter = new Intl.NumberFormat("zh-CN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+      const numberFormatter = new Intl.NumberFormat("zh-CN", {
+        maximumFractionDigits: 6
+      });
+
+      function getLocalTodayString() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function parseDateOnly(dateString) {
+        const [year, month, day] = dateString.split("-").map(Number);
+        return Date.UTC(year, month - 1, day);
+      }
+
+      function formatCurrency(value) {
+        return `${currencyFormatter.format(value)} 元`;
+      }
+
+      function formatPercentValue(value) {
+        return `${numberFormatter.format(value)}%`;
+      }
+
+      function readPositiveNumber(input, label) {
+        if (input.value.trim() === "") {
+          throw new Error(`${label}不能为空。`);
+        }
+
+        const value = Number(input.value);
+
+        if (!Number.isFinite(value)) {
+          throw new Error(`${label}请输入有效数字。`);
+        }
+
+        if (value < 0) {
+          throw new Error(`${label}不能小于 0。`);
+        }
+
+        return value;
+      }
+
+      function calculateRepaymentBreakdown() {
+        const totalPrincipal = readPositiveNumber(loanPrincipalInput, "借款总额");
+        const annualRatePercent = readPositiveNumber(annualRateInput, "年利率");
+        const paymentAmount = readPositiveNumber(paymentAmountInput, "本次还款金额");
+        const calculationDate = calculationDateInput.value;
+
+        if (!calculationDate) {
+          throw new Error("请选择计算日期。");
+        }
+
+        const daysElapsed = Math.round((parseDateOnly(calculationDate) - parseDateOnly(REFERENCE_DATE)) / 86400000);
+        const annualRate = annualRatePercent / 100;
+        const interestFactor = 1 + (daysElapsed / 365) * annualRate;
+
+        if (interestFactor <= 0) {
+          throw new Error("折算系数小于等于 0，当前日期和年利率组合无法用于本公式。");
+        }
+
+        const principalRepaid = paymentAmount / interestFactor;
+        const interestPaid = paymentAmount - principalRepaid;
+        const remainingPrincipal = totalPrincipal - principalRepaid;
+
+        return {
+          totalPrincipal,
+          annualRatePercent,
+          annualRate,
+          paymentAmount,
+          calculationDate,
+          daysElapsed,
+          interestFactor,
+          principalRepaid,
+          interestPaid,
+          remainingPrincipal
+        };
+      }
+
+      function renderResults(result) {
+        const {
+          totalPrincipal,
+          annualRatePercent,
+          paymentAmount,
+          calculationDate,
+          daysElapsed,
+          interestFactor,
+          principalRepaid,
+          interestPaid,
+          remainingPrincipal
+        } = result;
+
+        errorMessage.textContent = "";
+        remainingPrincipalOutput.textContent = formatCurrency(remainingPrincipal);
+        principalRepaidOutput.textContent = formatCurrency(principalRepaid);
+        interestPaidOutput.textContent = formatCurrency(interestPaid);
+        daysElapsedOutput.textContent = `${numberFormatter.format(daysElapsed)} 天`;
+
+        logicStepDaysOutput.textContent =
+          `还款日期 ${calculationDate} 相对 ${REFERENCE_DATE} 的天数为 ${numberFormatter.format(daysElapsed)} 天。`;
+        logicStepPrincipalOutput.textContent =
+          `折算系数 = 1 + ${numberFormatter.format(daysElapsed)} / 365 × ${annualRatePercent / 100} = ${interestFactor.toFixed(6)}，` +
+          `所以本金 = ${formatCurrency(paymentAmount)} ÷ ${interestFactor.toFixed(6)} = ${formatCurrency(principalRepaid)}。`;
+        logicStepInterestOutput.textContent =
+          `利息 = ${formatCurrency(paymentAmount)} - ${formatCurrency(principalRepaid)} = ${formatCurrency(interestPaid)}。`;
+        logicStepRemainingOutput.textContent =
+          `剩余本金 = ${formatCurrency(totalPrincipal)} - ${formatCurrency(principalRepaid)} = ${formatCurrency(remainingPrincipal)}。`;
+
+        substitutedFormulaOutput.textContent =
+          `(1 + ${numberFormatter.format(daysElapsed)} / 365 × ${annualRatePercent / 100}) × ${formatCurrency(principalRepaid)} = ${formatCurrency(paymentAmount)}`;
+      }
+
+      function renderIdleState() {
+        errorMessage.textContent = "";
+        remainingPrincipalOutput.textContent = "--";
+        principalRepaidOutput.textContent = "--";
+        interestPaidOutput.textContent = "--";
+        daysElapsedOutput.textContent = "--";
+        logicStepDaysOutput.textContent = "先算还款日期距离 2026 年 1 月 1 日的天数。";
+        logicStepPrincipalOutput.textContent = "再用还款金额除以折算系数，得到这次实际归还的本金。";
+        logicStepInterestOutput.textContent = "利息 = 本次还款金额 - 本次归还本金。";
+        logicStepRemainingOutput.textContent = "剩余本金 = 借款总额 - 本次归还本金。";
+        substitutedFormulaOutput.textContent = "等待输入后计算。";
+      }
+
+      function renderError(message) {
+        errorMessage.textContent = message;
+        remainingPrincipalOutput.textContent = "--";
+        principalRepaidOutput.textContent = "--";
+        interestPaidOutput.textContent = "--";
+        daysElapsedOutput.textContent = "--";
+        logicStepDaysOutput.textContent = "先算还款日期距离 2026 年 1 月 1 日的天数。";
+        logicStepPrincipalOutput.textContent = "再用还款金额除以折算系数，得到这次实际归还的本金。";
+        logicStepInterestOutput.textContent = "利息 = 本次还款金额 - 本次归还本金。";
+        logicStepRemainingOutput.textContent = "剩余本金 = 借款总额 - 本次归还本金。";
+        substitutedFormulaOutput.textContent = "等待输入后计算。";
+      }
+
+      function hasBlankRequiredFields() {
+        return (
+          loanPrincipalInput.value.trim() === "" ||
+          annualRateInput.value.trim() === "" ||
+          paymentAmountInput.value.trim() === "" ||
+          calculationDateInput.value.trim() === ""
+        );
+      }
+
+      function updateCalculator(showEmptyError = false) {
+        if (hasBlankRequiredFields()) {
+          if (showEmptyError) {
+            renderError("请先填写完整参数。");
+          } else {
+            renderIdleState();
+          }
+          return;
+        }
+
+        try {
+          renderResults(calculateRepaymentBreakdown());
+        } catch (error) {
+          renderError(error.message);
+        }
+      }
+
+      calculationDateInput.value = getLocalTodayString();
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        updateCalculator(true);
+      });
+
+      form.addEventListener("input", () => {
+        updateCalculator();
+      });
+
+      resetTodayButton.addEventListener("click", () => {
+        calculationDateInput.value = getLocalTodayString();
+        updateCalculator();
+      });
+
+      renderIdleState();
+    </script>
+  </body>
+</html>
